@@ -51,17 +51,17 @@ sudo apt install flatpak flatpak-builder git python3 python3-pip
 
 ### Remote Flathub + runtime (khớp manifest)
 
-Manifest dùng **GNOME 47** + **rust-stable** + **llvm18** (nhánh Freedesktop 24.08):
+Manifest dùng **GNOME 50** + **rust-stable** + **llvm20** (nhánh Freedesktop 25.08):
 
 ```bash
 flatpak remote-add --if-not-exists --user flathub \
   https://dl.flathub.org/repo/flathub.flatpakrepo
 
 flatpak install --user -y flathub \
-  org.gnome.Platform//47 \
-  org.gnome.Sdk//47 \
-  org.freedesktop.Sdk.Extension.rust-stable//24.08 \
-  org.freedesktop.Sdk.Extension.llvm18//24.08
+  org.gnome.Platform//50 \
+  org.gnome.Sdk//50 \
+  org.freedesktop.Sdk.Extension.rust-stable//25.08 \
+  org.freedesktop.Sdk.Extension.llvm20//25.08
 ```
 
 Script sẽ cố cài các runtime này khi chạy.
@@ -291,9 +291,10 @@ flatpak update io.github.manhavn.rust-rdp
 | `--socket=wayland` / `fallback-x11` | GUI |
 | `--device=dri` | OpenGL |
 | `--share=ipc` | GUI thông thường |
-| `--filesystem=home` | Mở/lưu file kết nối |
+| (không `--filesystem=home`) | Mở/lưu qua **FileChooser portal** (`rfd` xdg-portal) |
 
-Không xin quyền filesystem rộng nếu không cần — reviewer sẽ hỏi.
+**Không** dùng `--filesystem=home` / `host` — linter Flathub từ chối
+(`finish-args-home-filesystem-access`). Dùng portal.
 
 ---
 
@@ -327,10 +328,12 @@ appstreamcli validate flatpak/io.github.manhavn.rust-rdp.metainfo.xml
 
 | Vấn đề | Gợi ý |
 |--------|--------|
-| Thiếu runtime | Cài đúng `//47` và extension `//24.08` |
+| Thiếu runtime | Cài đúng `//50` và extension `//25.08` |
+| Linter: runtime-is-eol | Nâng `runtime-version` (hiện `"50"`) |
+| Linter: finish-args-home-filesystem-access | Bỏ `--filesystem=home`; dùng portal |
 | Cargo cần mạng trên Flathub | Thiếu/cũ `generated-sources.json` |
 | Git dep (IronRDP) offline fail | Generate lại sau khi đổi lockfile |
-| Lỗi LLVM / openh264 | Giữ extension `llvm18` + `LIBCLANG_PATH` |
+| Lỗi LLVM / openh264 | Giữ extension `llvm20` + `LIBCLANG_PATH` |
 | Review AppStream fail | Sửa screenshot, mô tả, releases |
 | Hỏi quyền | Giải thích từng dòng `finish-args` trong PR |
 

@@ -14,9 +14,9 @@
 #   sudo apt install flatpak flatpak-builder
 #   flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 #   flatpak install --user -y flathub \
-#     org.gnome.Platform//47 org.gnome.Sdk//47 \
-#     org.freedesktop.Sdk.Extension.rust-stable//24.08 \
-#     org.freedesktop.Sdk.Extension.llvm18//24.08
+#     org.gnome.Platform//50 org.gnome.Sdk//50 \
+#     org.freedesktop.Sdk.Extension.rust-stable//25.08 \
+#     org.freedesktop.Sdk.Extension.llvm20//25.08
 #
 # Flathub (first publish) is NOT a binary upload — you open a GitHub PR.
 # See --flathub-help and flatpak/README.md / flatpak/README.vi.md.
@@ -150,12 +150,11 @@ install_runtimes() {
   flatpak remote-add --if-not-exists --user flathub \
     https://dl.flathub.org/repo/flathub.flatpakrepo || true
 
-  # Runtime versions must match the manifest
-  flatpak install --user -y flathub org.gnome.Platform//47 org.gnome.Sdk//47 || true
-  # Extension branch tracks freedesktop runtime used by GNOME 47 (24.08)
+  # Runtime versions must match the manifest (GNOME 50 → freedesktop 25.08)
+  flatpak install --user -y flathub org.gnome.Platform//50 org.gnome.Sdk//50 || true
   flatpak install --user -y flathub \
-    org.freedesktop.Sdk.Extension.rust-stable//24.08 \
-    org.freedesktop.Sdk.Extension.llvm18//24.08 || true
+    org.freedesktop.Sdk.Extension.rust-stable//25.08 \
+    org.freedesktop.Sdk.Extension.llvm20//25.08 || true
 }
 
 generate_cargo_sources() {

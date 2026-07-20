@@ -1,25 +1,26 @@
 id: io.github.manhavn.rust-rdp
 runtime: org.gnome.Platform
-runtime-version: "47"
+# GNOME 47 is EOL on Flathub; Platform 50 tracks freedesktop 25.08.
+runtime-version: "50"
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-  - org.freedesktop.Sdk.Extension.llvm18
+  - org.freedesktop.Sdk.Extension.llvm20
 
 command: rust-rdp
 finish-args:
+  # Minimal sandbox. File open/save via xdg-desktop-portal (rfd), not --filesystem=home.
   - --share=ipc
   - --share=network
   - --socket=fallback-x11
   - --socket=wayland
   - --device=dri
-  - --filesystem=home
 
 build-options:
-  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm20/bin
   env:
     CARGO_HOME: /run/build/rust-rdp/cargo
-    LIBCLANG_PATH: /usr/lib/sdk/llvm18/lib
+    LIBCLANG_PATH: /usr/lib/sdk/llvm20/lib
 
 modules:
   - name: rust-rdp

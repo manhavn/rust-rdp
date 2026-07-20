@@ -51,17 +51,17 @@ sudo apt install flatpak flatpak-builder git python3 python3-pip
 
 ### Flathub remote + runtimes (match the manifest)
 
-Manifest uses **GNOME 47** + **rust-stable** + **llvm18** (Freedesktop 24.08 line):
+Manifest uses **GNOME 50** + **rust-stable** + **llvm20** (Freedesktop 25.08 line):
 
 ```bash
 flatpak remote-add --if-not-exists --user flathub \
   https://dl.flathub.org/repo/flathub.flatpakrepo
 
 flatpak install --user -y flathub \
-  org.gnome.Platform//47 \
-  org.gnome.Sdk//47 \
-  org.freedesktop.Sdk.Extension.rust-stable//24.08 \
-  org.freedesktop.Sdk.Extension.llvm18//24.08
+  org.gnome.Platform//50 \
+  org.gnome.Sdk//50 \
+  org.freedesktop.Sdk.Extension.rust-stable//25.08 \
+  org.freedesktop.Sdk.Extension.llvm20//25.08
 ```
 
 The script installs these automatically when possible.
@@ -298,9 +298,10 @@ flatpak update io.github.manhavn.rust-rdp
 | `--socket=wayland` / `fallback-x11` | GUI |
 | `--device=dri` | OpenGL / eframe |
 | `--share=ipc` | Standard GUI |
-| `--filesystem=home` | Open/save connection files |
+| (no `--filesystem=home`) | Open/save via **FileChooser portal** (`rfd` xdg-portal) |
 
-Do **not** add broad filesystem access unless required — reviewers will ask.
+Do **not** use `--filesystem=home` / `host` — Flathub linter rejects them
+(`finish-args-home-filesystem-access`). Prefer portals.
 
 ---
 
@@ -336,10 +337,12 @@ appstreamcli validate flatpak/io.github.manhavn.rust-rdp.metainfo.xml
 
 | Problem | What to try |
 |---------|-------------|
-| Missing runtime / extension | Install exact `//47` and `//24.08` refs above |
+| Missing runtime / extension | Install exact `//50` and `//25.08` refs above |
+| Linter: runtime-is-eol | Bump `runtime-version` (currently `"50"`) |
+| Linter: finish-args-home-filesystem-access | Remove `--filesystem=home`; use portals |
 | Cargo network during Flathub build | Missing or stale `generated-sources.json` |
 | Git dependencies (IronRDP) fail offline | Re-run generator after lockfile change; ensure git sources are in the generated file |
-| LLVM / openh264 / bindgen errors | Keep `llvm18` extension + `LIBCLANG_PATH` in manifest |
+| LLVM / openh264 / bindgen errors | Keep `llvm20` extension + `LIBCLANG_PATH` in manifest |
 | AppStream review fails | Fix screenshots, description, releases |
 | Permission questions | Justify each `finish-args` line in the PR |
 

@@ -8,27 +8,30 @@
 
 id: io.github.manhavn.rust-rdp
 runtime: org.gnome.Platform
-runtime-version: "47"
+# GNOME 47 is EOL on Flathub; use current Platform (tracks freedesktop 25.08).
+runtime-version: "50"
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-  - org.freedesktop.Sdk.Extension.llvm18
+  - org.freedesktop.Sdk.Extension.llvm20
 
 command: rust-rdp
 finish-args:
+  # Minimal sandbox: network for RDP/VNC; display; GPU.
+  # Open/save dialogs use the FileChooser portal (rfd xdg-portal) — do NOT
+  # use --filesystem=home (Flathub linter: finish-args-home-filesystem-access).
   - --share=ipc
   - --share=network
   - --socket=fallback-x11
   - --socket=wayland
   - --device=dri
-  - --filesystem=home
 
 build-options:
-  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm20/bin
   env:
     CARGO_HOME: /run/build/rust-rdp/cargo
     # openh264 / bindgen
-    LIBCLANG_PATH: /usr/lib/sdk/llvm18/lib
+    LIBCLANG_PATH: /usr/lib/sdk/llvm20/lib
 
 modules:
   # Generated offline crates: flatpak/generated-sources.json
