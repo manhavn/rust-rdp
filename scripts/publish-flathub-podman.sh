@@ -21,7 +21,7 @@
 #   GH_TOKEN / GITHUB_TOKEN  GitHub PAT (HTTPS only; repo + workflow recommended)
 #   GH_USER                  GitHub username (auto-detected via gh / origin when possible)
 #   GIT_URL                  Upstream project URL for the Flatpak manifest (HTTPS preferred)
-#   GIT_TAG                  Release tag (e.g. v0.1.0)
+#   GIT_TAG                  Release tag (e.g. v0.1.0); created + pushed if missing
 #   WORK_DIR                 Where to write the flathub package (default: ./flathub-out)
 #   SKIP_BUILD=1             Skip podman flatpak-builder smoke test
 #   OPEN_PR=1|0              Open GitHub PR automatically (default: ask)
@@ -226,7 +226,7 @@ MODE="${MODE:-}"
 GIT_AUTH="${GIT_AUTH:-}"
 
 prompt GIT_URL "Git HTTPS URL of this project (manifest source)" "$(default_git_url)"
-prompt GIT_TAG "Release git tag to publish (must exist on GitHub)" "v0.1.0"
+prompt GIT_TAG "Release git tag (created + pushed automatically if missing)" "v0.1.0"
 prompt WORK_DIR "Output directory for Flathub package tree" "${ROOT}/flathub-out"
 prompt MODE "Submit mode: first (new app PR) or update (app repo PR)" "first"
 
@@ -281,20 +281,45 @@ if [[ "${OPEN_PR}" == "1" ]]; then
   export GH_USER
 fi
 
-# ── resolve tag commit ───────────────────────────────────────────────────────
+# ── ensure release tag (create + push if missing) ────────────────────────────
 
-info "Resolving tag ${GIT_TAG}…"
-if ! git -C "$ROOT" rev-parse -q --verify "refs/tags/${GIT_TAG}" >/dev/null; then
-  prompt_yesno CREATE_TAG "Tag ${GIT_TAG} not found locally. Create on current HEAD and push?" "n"
-  if [[ "${CREATE_TAG:-0}" == "1" ]]; then
-    git -C "$ROOT" tag "${GIT_TAG}"
-    info "Pushing tag ${GIT_TAG}…"
-    git -C "$ROOT" push origin "${GIT_TAG}" || die "Failed to push tag — push manually then re-run"
+# Create local tag on HEAD if absent, then push to origin when remote lacks it.
+ensure_release_tag() {
+  local tag="$1"
+  local head remote_has
+  [[ -n "$tag" ]] || die "Empty GIT_TAG"
+
+  head="$(git -C "$ROOT" rev-parse HEAD)"
+  info "Resolving release tag ${tag}…"
+
+  if ! git -C "$ROOT" rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+    if [[ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null || true)" ]]; then
+      info "Note: working tree has uncommitted changes — tag points at last commit only (${head:0:12})."
+    fi
+    info "Tag ${tag} not found locally — creating on HEAD (${head:0:12})…"
+    git -C "$ROOT" tag "${tag}" \
+      || die "Failed to create local tag ${tag}"
+    ok "created local tag ${tag}"
   else
-    die "Tag ${GIT_TAG} missing. Create & push it, then re-run."
+    ok "local tag ${tag} exists → $(git -C "$ROOT" rev-list -n 1 "${tag}" | cut -c1-12)"
   fi
-fi
 
+  # Push to origin if the tag is not on the remote yet.
+  remote_has=0
+  if git -C "$ROOT" ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+    remote_has=1
+  fi
+  if [[ "$remote_has" -eq 0 ]]; then
+    info "Pushing tag ${tag} to origin…"
+    git -C "$ROOT" push origin "refs/tags/${tag}" \
+      || die "Failed to push tag ${tag} to origin (check git remote / auth)"
+    ok "pushed ${tag} to origin"
+  else
+    ok "origin already has tag ${tag}"
+  fi
+}
+
+ensure_release_tag "${GIT_TAG}"
 GIT_COMMIT="$(git -C "$ROOT" rev-list -n 1 "${GIT_TAG}")"
 ok "commit ${GIT_COMMIT}"
 
@@ -627,7 +652,7 @@ Contents:
   desktop + metainfo + icons
 
 Next steps if you did NOT open a PR:
-  1) Ensure tag ${GIT_TAG} is on GitHub:  git push origin ${GIT_TAG}
+  1) Tag ${GIT_TAG} was ensured on origin (auto-created/pushed if it was missing)
   2) First app (order matters):
        a. Clone upstream new-pr:
             git clone -b new-pr git@github.com:flathub/flathub.git

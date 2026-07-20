@@ -266,12 +266,24 @@ prepare_flathub_package_tree() {
     git_tag="$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null || true)"
   fi
   if [[ -z "$git_tag" ]]; then
-    echo "No git tag found. Set GIT_TAG=vX.Y.Z or create a tag first." >&2
+    echo "No git tag found. Set GIT_TAG=vX.Y.Z (created + pushed automatically if missing)." >&2
     exit 1
   fi
+  # Auto-create local tag + push to origin when the tag is missing.
   if ! git -C "$ROOT" rev-parse -q --verify "refs/tags/${git_tag}" >/dev/null; then
-    echo "Tag ${git_tag} not found locally." >&2
-    exit 1
+    echo "==> Tag ${git_tag} not found locally — creating on HEAD…"
+    if [[ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null || true)" ]]; then
+      echo "    Note: uncommitted changes are not included in the tag (points at last commit)."
+    fi
+    git -C "$ROOT" tag "${git_tag}" \
+      || { echo "Failed to create tag ${git_tag}" >&2; exit 1; }
+    echo "    ✓ created local tag ${git_tag}"
+  fi
+  if ! git -C "$ROOT" ls-remote --exit-code --tags origin "refs/tags/${git_tag}" >/dev/null 2>&1; then
+    echo "==> Pushing tag ${git_tag} to origin…"
+    git -C "$ROOT" push origin "refs/tags/${git_tag}" \
+      || { echo "Failed to push tag ${git_tag} to origin" >&2; exit 1; }
+    echo "    ✓ pushed ${git_tag}"
   fi
   git_commit="$(git -C "$ROOT" rev-list -n 1 "${git_tag}")"
 
