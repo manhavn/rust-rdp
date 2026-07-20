@@ -1,0 +1,81 @@
+name: rust-rdp
+base: core24
+version: '0.1.0'
+summary: RDP and VNC remote desktop client
+description: |
+  Rust RDP VNC is a remote desktop client with a shared Rust protocol core.
+  Connect to Windows Remote Desktop (RDP) and VNC servers from Linux.
+
+  Features:
+  - RDP (IronRDP) and VNC sessions
+  - Open/save .rdp and .vnc connection files
+  - Zoom, fullscreen, keyboard and mouse input
+
+  Source: https://github.com/manhavn/rust-rdp
+
+grade: devel
+confinement: strict
+
+# amd64 local builds; enable arm64 on Launchpad if needed
+platforms:
+  amd64:
+    build-on: [amd64]
+    build-for: [amd64]
+
+apps:
+  rust-rdp:
+    command: bin/rust-rdp
+    desktop: meta/gui/rust-rdp.desktop
+    extensions: [gnome]
+    common-id: io.github.manhavn.rust-rdp
+    plugs:
+      - network
+      - network-bind
+      - opengl
+      - home
+      - removable-media
+
+parts:
+  rust-rdp:
+    plugin: rust
+    source: .
+    source-type: local
+    build-packages:
+      - build-essential
+      - cmake
+      - pkg-config
+      - libssl-dev
+      - libxkbcommon-dev
+      - libwayland-dev
+      - libegl-dev
+      - libx11-dev
+      - libxcursor-dev
+      - libxi-dev
+      - libxrandr-dev
+      - libx11-xcb-dev
+      - libdbus-1-dev
+      - libclang-dev
+      - nasm
+    stage-packages:
+      - libxkbcommon0
+      - libegl1
+      - libwayland-client0
+      - libx11-6
+      - libxcursor1
+      - libxi6
+      - libxrandr2
+      - libdbus-1-3
+    override-build: |
+      set -e
+      # Build only the desktop binary from the Cargo workspace
+      cargo install \
+        --locked \
+        --path desktop \
+        --root "${CRAFT_PART_INSTALL}" \
+        --force
+
+      mkdir -p "${CRAFT_PART_INSTALL}/meta/gui"
+      cp desktop/assets/icon.png \
+        "${CRAFT_PART_INSTALL}/meta/gui/rust-rdp.png"
+      cp snap/gui/rust-rdp.desktop \
+        "${CRAFT_PART_INSTALL}/meta/gui/rust-rdp.desktop"
