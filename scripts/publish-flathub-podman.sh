@@ -14,10 +14,12 @@
 #   GIT_AUTH=ssh OPEN_PR=1 ./scripts/publish-flathub-podman.sh   # SSH key, no token
 #   GIT_AUTH=https GH_TOKEN=... GH_USER=you OPEN_PR=1 ./scripts/publish-flathub-podman.sh
 #
+# First interactive prompt is GitHub transport (ssh | https).
+#
 # Env (optional, skips prompts when set):
 #   GIT_AUTH=ssh|https       GitHub transport for clone/push/PR (default: ssh)
 #                            ssh → git@github.com:…  (no username/token if key works)
-#                            https → needs GH_USER + GH_TOKEN for push/PR
+#                            https → needs GH_USER + GH_TOKEN when OPEN_PR=1
 #   GH_TOKEN / GITHUB_TOKEN  GitHub PAT (HTTPS only; repo + workflow recommended)
 #   GH_USER                  GitHub username (auto-detected via gh / origin when possible)
 #   GIT_URL                  Upstream project URL for the Flatpak manifest (HTTPS preferred)
@@ -227,7 +229,40 @@ OPEN_PR="${OPEN_PR:-}"
 MODE="${MODE:-}"
 GIT_AUTH="${GIT_AUTH:-}"
 
-prompt GIT_URL "Git HTTPS URL of this project (manifest source)" "$(default_git_url)"
+# First question: how we talk to GitHub (tag push, clone flathub, open PR).
+prompt GIT_AUTH "GitHub transport: ssh (git@github.com) or https" "ssh"
+case "${GIT_AUTH}" in
+  ssh|https) ;;
+  *) die "GIT_AUTH must be 'ssh' or 'https' (got: ${GIT_AUTH})" ;;
+esac
+export GIT_AUTH
+
+if [[ "${GIT_AUTH}" == "ssh" ]]; then
+  info "Using SSH (git@github.com:) for git push/clone/PR — no token required"
+  need_cmd ssh
+  if ! ssh_github_ok; then
+    die "SSH auth to git@github.com failed (BatchMode).
+  Fix: ssh-add your key, or test:  ssh -T git@github.com
+  Or re-run and choose https + a token."
+  fi
+  ok "SSH to GitHub works"
+  detect_gh_user
+  if [[ -n "${GH_USER:-}" ]]; then
+    ok "GitHub user: ${GH_USER}"
+  fi
+  if command -v gh >/dev/null 2>&1 && ! gh auth status >/dev/null 2>&1; then
+    info "Tip: for automatic PR open, run once:  gh auth login -h github.com -p ssh"
+  fi
+else
+  info "Using HTTPS for git push/clone/PR (token needed if you open a PR or push tags to a private remote)"
+  detect_gh_user
+  if [[ -n "${GH_USER:-}" ]]; then
+    ok "GitHub user: ${GH_USER}"
+  fi
+fi
+
+# Flatpak manifest source should stay HTTPS (Flathub builders pull over https).
+prompt GIT_URL "Project URL for Flatpak manifest (HTTPS preferred)" "$(default_git_url)"
 prompt GIT_TAG "Release git tag (created + pushed automatically if missing)" "v0.1.0"
 prompt WORK_DIR "Output directory for Flathub package tree" "${ROOT}/flathub-out"
 prompt MODE "Submit mode: first (new app PR) or update (app repo PR)" "first"
@@ -240,42 +275,15 @@ prompt_yesno DO_GEN "Generate flatpak/generated-sources.json now?" "y"
 if [[ -z "${SKIP_BUILD}" ]]; then
   prompt_yesno SKIP_BUILD "Skip Podman flatpak-builder smoke test? (faster)" "y"
 fi
-prompt_yesno OPEN_PR "Open GitHub PR automatically (SSH key or HTTPS token)?" "n"
+prompt_yesno OPEN_PR "Open GitHub PR automatically?" "n"
 
+# Credentials needed for OPEN_PR (and optional HTTPS authenticated ops).
 if [[ "${OPEN_PR}" == "1" ]]; then
-  prompt GIT_AUTH "GitHub transport: ssh (git@github.com) or https" "ssh"
-  case "${GIT_AUTH}" in
-    ssh|https) ;;
-    *) die "GIT_AUTH must be 'ssh' or 'https' (got: ${GIT_AUTH})" ;;
-  esac
-
   if [[ "${GIT_AUTH}" == "ssh" ]]; then
-    info "Using SSH (git@github.com:) — no Personal Access Token required"
-    need_cmd ssh
-    if ! ssh_github_ok; then
-      die "SSH auth to git@github.com failed (BatchMode).
-  Fix: ssh-add your key, or test:  ssh -T git@github.com
-  Or re-run with GIT_AUTH=https and a token."
-    fi
-    ok "SSH to GitHub works"
-    detect_gh_user
     if [[ -z "${GH_USER:-}" ]]; then
-      # Only ask if we truly cannot detect — rare with a working SSH/gh setup.
       prompt GH_USER "GitHub username (fork owner / PR head)"
-    else
-      ok "GitHub user: ${GH_USER}"
-    fi
-    # Prefer existing gh session; do not force token login.
-    if command -v gh >/dev/null 2>&1; then
-      if ! gh auth status >/dev/null 2>&1; then
-        info "gh is not logged in. For PR create without token, run once:"
-        info "  gh auth login -h github.com -p ssh"
-        info "Or set GH_TOKEN for HTTPS API only (git push still uses SSH)."
-      fi
     fi
   else
-    info "Using HTTPS — GitHub username + token required for push/PR"
-    detect_gh_user
     prompt GH_USER "GitHub username"
     prompt_secret GH_TOKEN "GitHub Personal Access Token (repo scope)"
     export GH_TOKEN GITHUB_TOKEN="$GH_TOKEN"
