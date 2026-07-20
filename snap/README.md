@@ -7,7 +7,7 @@ This directory contains everything needed to build a **Snap** of **Rust RDP VNC*
 | File | Purpose |
 |------|---------|
 | [`snapcraft.yaml`](snapcraft.yaml) | Snap definition (name, plugs, build steps) |
-| [`gui/rust-rdp.desktop`](gui/rust-rdp.desktop) | Desktop entry installed into the snap |
+| [`gui/rust-rdp-vnc.desktop`](gui/rust-rdp-vnc.desktop) | Desktop entry installed into the snap |
 
 Convenience script (from repo root): [`../scripts/publish-snap.sh`](../scripts/publish-snap.sh)
 
@@ -26,7 +26,7 @@ snapcraft pack  →  .snap file  →  snapcraft upload
                                       └─ stable     (public default)
 ```
 
-Unlike Flathub, you **upload a built binary package** (`.snap`). The store hosts it; users install with `snap install rust-rdp`.
+Unlike Flathub, you **upload a built binary package** (`.snap`). The store hosts it; users install with `snap install rust-rdp-vnc`.
 
 ---
 
@@ -67,10 +67,10 @@ Snap names are **global and unique**.
 ./scripts/publish-snap.sh --register
 
 # Or manually
-snapcraft register rust-rdp
+snapcraft register rust-rdp-vnc
 ```
 
-If `rust-rdp` is taken, change `name:` in `snapcraft.yaml` and register the new name.
+If `rust-rdp-vnc` is taken, change `name:` in `snapcraft.yaml` and register the new name.
 
 ---
 
@@ -79,16 +79,16 @@ If `rust-rdp` is taken, change `name:` in `snapcraft.yaml` and register the new 
 ### Quick (script)
 
 ```bash
-cd /path/to/rust-rdp
+cd /path/to/rust-rdp-vnc
 ./scripts/publish-snap.sh --build-only
 ```
 
 ### Manual
 
 ```bash
-cd /path/to/rust-rdp
+cd /path/to/rust-rdp-vnc
 snapcraft pack
-# → rust-rdp_0.1.0_amd64.snap (version from snapcraft.yaml)
+# → rust-rdp-vnc_0.1.0_amd64.snap (version from snapcraft.yaml)
 ```
 
 First build is slow: downloads SDK, compiles Rust, IronRDP, openh264, etc.
@@ -96,10 +96,10 @@ First build is slow: downloads SDK, compiles Rust, IronRDP, openh264, etc.
 ### Install locally (before uploading)
 
 ```bash
-sudo snap install --dangerous ./rust-rdp_*.snap
-rust-rdp
+sudo snap install --dangerous ./rust-rdp-vnc_*.snap
+rust-rdp-vnc
 # Remove when done testing
-sudo snap remove rust-rdp
+sudo snap remove rust-rdp-vnc
 ```
 
 `--dangerous` is required for local snaps that are not signed by the store.
@@ -128,23 +128,23 @@ sudo snap remove rust-rdp
 ### Upload manually
 
 ```bash
-snapcraft upload --release=edge ./rust-rdp_0.1.0_amd64.snap
+snapcraft upload --release=edge ./rust-rdp-vnc_0.1.0_amd64.snap
 ```
 
 Or upload without releasing, then promote:
 
 ```bash
-snapcraft upload ./rust-rdp_0.1.0_amd64.snap
-snapcraft status rust-rdp
-snapcraft release rust-rdp <revision> edge
-snapcraft release rust-rdp <revision> stable
+snapcraft upload ./rust-rdp-vnc_0.1.0_amd64.snap
+snapcraft status rust-rdp-vnc
+snapcraft release rust-rdp-vnc <revision> edge
+snapcraft release rust-rdp-vnc <revision> stable
 ```
 
 ### Users install
 
 ```bash
-sudo snap install rust-rdp --edge     # while only on edge
-sudo snap install rust-rdp            # after stable
+sudo snap install rust-rdp-vnc --edge     # while only on edge
+sudo snap install rust-rdp-vnc            # after stable
 ```
 
 ---
@@ -152,7 +152,7 @@ sudo snap install rust-rdp            # after stable
 ## Store listing (Dashboard)
 
 Before promoting to **stable**, complete the listing at  
-[https://snapcraft.io/rust-rdp](https://snapcraft.io) → your snap → **Listing**:
+[https://snapcraft.io/rust-rdp-vnc](https://snapcraft.io) → your snap → **Listing**:
 
 - [ ] Icon (512×512 PNG) — use `desktop/assets/icon-512.png`
 - [ ] Screenshots (desktop session, connection form)
@@ -169,7 +169,7 @@ Poor listings delay or block stable visibility.
 
 ### Identity
 
-- `name: rust-rdp` — store package name  
+- `name: rust-rdp-vnc` — store package name  
 - `version` — bump when releasing  
 - `base: core24` — Ubuntu 24.04 base  
 - `grade: devel` — use `stable` when the package is production-ready  
@@ -228,7 +228,7 @@ Never commit store credentials to git.
 | `snapcraft: command not found` | `sudo snap install snapcraft --classic` |
 | LXD errors | `sudo lxd init --auto`; ensure user in `lxd` group |
 | Name already registered | Change `name:` and re-register |
-| App starts but no network | Check plugs; reconnect: `snap connections rust-rdp` |
+| App starts but no network | Check plugs; reconnect: `snap connections rust-rdp-vnc` |
 | Cannot open files outside home | Strict confinement; grant `home` / `removable-media` or use classic (not recommended) |
 | Build fails on openh264 / llvm | Ensure `nasm`, `libclang-dev`, cmake in `build-packages` |
 | Upload auth failed | `snapcraft logout` then `snapcraft login` |
@@ -249,7 +249,7 @@ Never commit store credentials to git.
 ```
 snap/
   snapcraft.yaml
-  gui/rust-rdp.desktop
+  gui/rust-rdp-vnc.desktop
   README.md              ← this file
   README.vi.md
 scripts/publish-snap.sh

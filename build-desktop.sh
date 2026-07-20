@@ -20,12 +20,12 @@ MODE="${1:-release}"
 
 if [ "$MODE" = "dev" ] || [ "$MODE" = "debug" ]; then
     echo -e "${YELLOW}Building desktop client (debug)...${NC}"
-    cargo build -p rust-rdp-desktop
-    BIN="$DIR/target/debug/rust-rdp"
+    cargo build -p rust-rdp-vnc-desktop
+    BIN="$DIR/target/debug/rust-rdp-vnc"
 else
     echo -e "${YELLOW}Building desktop client (release)...${NC}"
-    cargo build -p rust-rdp-desktop --release
-    BIN="$DIR/target/release/rust-rdp"
+    cargo build -p rust-rdp-vnc-desktop --release
+    BIN="$DIR/target/release/rust-rdp-vnc"
 fi
 
 if [ -f "$BIN" ]; then

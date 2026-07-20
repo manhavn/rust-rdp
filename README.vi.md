@@ -99,14 +99,14 @@ Sửa `ANDROID_NDK_HOME` / đường dẫn NDK trong `android/app/build.gradle.k
 ./build-desktop.sh dev
 
 # Hoặc gọi cargo trực tiếp
-cargo build -p rust-rdp-desktop --release
-cargo run -p rust-rdp-desktop
+cargo build -p rust-rdp-vnc-desktop --release
+cargo run -p rust-rdp-vnc-desktop
 ```
 
 Binary:
 
-- Release: `target/release/rust-rdp`
-- Debug: `target/debug/rust-rdp`
+- Release: `target/release/rust-rdp-vnc`
+- Debug: `target/debug/rust-rdp-vnc`
 
 ---
 
@@ -152,18 +152,18 @@ Tài nguyên nằm trong `desktop/assets/`.
 
 ```bash
 # Binary vào PATH
-cp target/release/rust-rdp ~/.local/bin/
+cp target/release/rust-rdp-vnc ~/.local/bin/
 
 # Icon
 mkdir -p ~/.local/share/icons/hicolor/256x256/apps
 cp desktop/assets/icon.png \
-  ~/.local/share/icons/hicolor/256x256/apps/io.github.manhavn.rust-rdp.png
+  ~/.local/share/icons/hicolor/256x256/apps/io.github.manhavn.rust-rdp-vnc.png
 
 # Entry menu
 mkdir -p ~/.local/share/applications
-cp desktop/assets/io.github.manhavn.rust-rdp.desktop \
+cp desktop/assets/io.github.manhavn.rust-rdp-vnc.desktop \
   ~/.local/share/applications/
-# Nếu rust-rdp không nằm trong PATH, sửa Exec= thành đường dẫn tuyệt đối
+# Nếu rust-rdp-vnc không nằm trong PATH, sửa Exec= thành đường dẫn tuyệt đối
 ```
 
 ---
@@ -197,7 +197,7 @@ cargo check -p rust_rdp
 cargo check -p rust_rdp --features android
 
 # Chỉ desktop
-cargo check -p rust-rdp-desktop
+cargo check -p rust-rdp-vnc-desktop
 ```
 
 Sinh icon launcher Android:
@@ -220,7 +220,7 @@ Cấu hình nằm trong `snap/` và `flatpak/`. Script hỗ trợ:
 
 # Flatpak cài local
 ./scripts/publish-flatpak.sh
-flatpak run io.github.manhavn.rust-rdp
+flatpak run io.github.manhavn.rust-rdp-vnc
 
 # Flathub một lần (Podman): sinh sources + gói (+ tuỳ chọn PR GitHub)
 ./scripts/publish-flathub-podman.sh

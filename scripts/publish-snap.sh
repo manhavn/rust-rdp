@@ -14,7 +14,7 @@
 #   sudo snap install snapcraft --classic
 #   sudo snap install lxd && sudo lxd init --auto
 #   snapcraft login
-#   snapcraft register rust-rdp   # once (or use --register)
+#   snapcraft register rust-rdp-vnc   # once (or use --register)
 #
 # Full guide: snap/README.md  |  snap/README.vi.md
 set -euo pipefail

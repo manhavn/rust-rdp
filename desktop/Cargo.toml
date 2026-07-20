@@ -1,11 +1,11 @@
 [package]
-name = "rust-rdp-desktop"
+name = "rust-rdp-vnc-desktop"
 version = "0.1.0"
 edition = "2021"
 description = "Rust RDP VNC — Linux desktop RDP/VNC client powered by the rust_rdp core"
 
 [[bin]]
-name = "rust-rdp"
+name = "rust-rdp-vnc"
 path = "src/main.rs"
 
 [dependencies]

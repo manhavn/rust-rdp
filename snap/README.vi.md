@@ -7,7 +7,7 @@ Thư mục này chứa mọi thứ để build **Snap** của **Rust RDP VNC** v
 | File | Vai trò |
 |------|---------|
 | [`snapcraft.yaml`](snapcraft.yaml) | Định nghĩa snap (tên, plugs, bước build) |
-| [`gui/rust-rdp.desktop`](gui/rust-rdp.desktop) | Desktop entry trong snap |
+| [`gui/rust-rdp-vnc.desktop`](gui/rust-rdp-vnc.desktop) | Desktop entry trong snap |
 
 Script tiện ích (từ root repo): [`../scripts/publish-snap.sh`](../scripts/publish-snap.sh)
 
@@ -26,7 +26,7 @@ snapcraft pack  →  file .snap  →  snapcraft upload
                                       └─ stable     (mặc định công khai)
 ```
 
-Khác Flathub: bạn **upload gói binary** (`.snap`). Store host gói; user cài bằng `snap install rust-rdp`.
+Khác Flathub: bạn **upload gói binary** (`.snap`). Store host gói; user cài bằng `snap install rust-rdp-vnc`.
 
 ---
 
@@ -65,10 +65,10 @@ Tên snap **toàn cầu, không trùng**.
 ./scripts/publish-snap.sh --register
 
 # Hoặc
-snapcraft register rust-rdp
+snapcraft register rust-rdp-vnc
 ```
 
-Nếu `rust-rdp` đã bị lấy, đổi `name:` trong `snapcraft.yaml` rồi register tên mới.
+Nếu `rust-rdp-vnc` đã bị lấy, đổi `name:` trong `snapcraft.yaml` rồi register tên mới.
 
 ---
 
@@ -77,16 +77,16 @@ Nếu `rust-rdp` đã bị lấy, đổi `name:` trong `snapcraft.yaml` rồi re
 ### Nhanh (script)
 
 ```bash
-cd /path/to/rust-rdp
+cd /path/to/rust-rdp-vnc
 ./scripts/publish-snap.sh --build-only
 ```
 
 ### Thủ công
 
 ```bash
-cd /path/to/rust-rdp
+cd /path/to/rust-rdp-vnc
 snapcraft pack
-# → rust-rdp_0.1.0_amd64.snap
+# → rust-rdp-vnc_0.1.0_amd64.snap
 ```
 
 Lần đầu lâu: tải SDK, compile Rust, IronRDP, openh264, …
@@ -94,9 +94,9 @@ Lần đầu lâu: tải SDK, compile Rust, IronRDP, openh264, …
 ### Cài local (trước khi upload)
 
 ```bash
-sudo snap install --dangerous ./rust-rdp_*.snap
-rust-rdp
-sudo snap remove rust-rdp
+sudo snap install --dangerous ./rust-rdp-vnc_*.snap
+rust-rdp-vnc
+sudo snap remove rust-rdp-vnc
 ```
 
 `--dangerous` bắt buộc với snap local chưa ký bởi store.
@@ -124,23 +124,23 @@ sudo snap remove rust-rdp
 ### Upload thủ công
 
 ```bash
-snapcraft upload --release=edge ./rust-rdp_0.1.0_amd64.snap
+snapcraft upload --release=edge ./rust-rdp-vnc_0.1.0_amd64.snap
 ```
 
 Hoặc upload rồi promote:
 
 ```bash
-snapcraft upload ./rust-rdp_0.1.0_amd64.snap
-snapcraft status rust-rdp
-snapcraft release rust-rdp <revision> edge
-snapcraft release rust-rdp <revision> stable
+snapcraft upload ./rust-rdp-vnc_0.1.0_amd64.snap
+snapcraft status rust-rdp-vnc
+snapcraft release rust-rdp-vnc <revision> edge
+snapcraft release rust-rdp-vnc <revision> stable
 ```
 
 ### User cài
 
 ```bash
-sudo snap install rust-rdp --edge
-sudo snap install rust-rdp            # sau khi có stable
+sudo snap install rust-rdp-vnc --edge
+sudo snap install rust-rdp-vnc            # sau khi có stable
 ```
 
 ---
@@ -215,7 +215,7 @@ GitHub Actions: `snapcore/action-build` + token store (`SNAPCRAFT_STORE_CREDENTI
 | Không có `snapcraft` | `sudo snap install snapcraft --classic` |
 | Lỗi LXD | `sudo lxd init --auto`; user trong group `lxd` |
 | Tên đã có | Đổi `name:` + register lại |
-| App không ra mạng | `snap connections rust-rdp` |
+| App không ra mạng | `snap connections rust-rdp-vnc` |
 | Không mở file ngoài home | Giới hạn strict; dùng plug `home` |
 | Lỗi build openh264 | Có `nasm`, cmake, libclang trong `build-packages` |
 | Upload auth fail | `snapcraft login` lại |
@@ -235,7 +235,7 @@ GitHub Actions: `snapcore/action-build` + token store (`SNAPCRAFT_STORE_CREDENTI
 ```
 snap/
   snapcraft.yaml
-  gui/rust-rdp.desktop
+  gui/rust-rdp-vnc.desktop
   README.md
   README.vi.md           ← file này
 scripts/publish-snap.sh

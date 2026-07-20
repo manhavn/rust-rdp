@@ -6,9 +6,9 @@ This directory packages **Rust RDP VNC** as a Flatpak and prepares a submission 
 
 | File | Purpose |
 |------|---------|
-| [`io.github.manhavn.rust-rdp.yml`](io.github.manhavn.rust-rdp.yml) | Flatpak manifest |
-| [`io.github.manhavn.rust-rdp.desktop`](io.github.manhavn.rust-rdp.desktop) | Desktop entry |
-| [`io.github.manhavn.rust-rdp.metainfo.xml`](io.github.manhavn.rust-rdp.metainfo.xml) | AppStream metadata (required by Flathub) |
+| [`io.github.manhavn.rust-rdp-vnc.yml`](io.github.manhavn.rust-rdp-vnc.yml) | Flatpak manifest |
+| [`io.github.manhavn.rust-rdp-vnc.desktop`](io.github.manhavn.rust-rdp-vnc.desktop) | Desktop entry |
+| [`io.github.manhavn.rust-rdp-vnc.metainfo.xml`](io.github.manhavn.rust-rdp-vnc.metainfo.xml) | AppStream metadata (required by Flathub) |
 | `generated-sources.json` | Offline Cargo crates (**generated**, not committed by default) |
 
 Scripts (repo root):
@@ -33,11 +33,11 @@ flatpak-builder → install user        PR to flathub/flathub (new-pr)
                                       → build bot
                                       → review
                                       → merge
-                                      → flathub/io.github.manhavn.rust-rdp
-                                      → users: flatpak install flathub io.github.manhavn.rust-rdp
+                                      → flathub/io.github.manhavn.rust-rdp-vnc
+                                      → users: flatpak install flathub io.github.manhavn.rust-rdp-vnc
 ```
 
-App ID: **`io.github.manhavn.rust-rdp`** (must stay stable forever once published).
+App ID: **`io.github.manhavn.rust-rdp-vnc`** (must stay stable forever once published).
 
 ---
 
@@ -88,7 +88,7 @@ export SKIP_BUILD=1
 ./scripts/publish-flathub-podman.sh --non-interactive
 ```
 
-Output package: `flathub-out/io.github.manhavn.rust-rdp/` (manifest with git tag + `generated-sources.json`).
+Output package: `flathub-out/io.github.manhavn.rust-rdp-vnc/` (manifest with git tag + `generated-sources.json`).
 
 ---
 
@@ -101,7 +101,7 @@ cd /path/to/rust-rdp
 ./scripts/publish-flatpak.sh
 
 # Run
-flatpak run io.github.manhavn.rust-rdp
+flatpak run io.github.manhavn.rust-rdp-vnc
 
 # Uninstall
 ./scripts/publish-flatpak.sh --uninstall
@@ -111,7 +111,7 @@ Other modes:
 
 ```bash
 ./scripts/publish-flatpak.sh --build-only   # build into local repo only
-./scripts/publish-flatpak.sh --bundle       # export io.github.manhavn.rust-rdp.flatpak
+./scripts/publish-flatpak.sh --bundle       # export io.github.manhavn.rust-rdp-vnc.flatpak
 ```
 
 ### Local vs Flathub-safe builds
@@ -198,17 +198,17 @@ git clone --branch=new-pr --single-branch \
 # git clone --branch=new-pr --single-branch \
 #   https://github.com/flathub/flathub.git
 cd flathub
-git checkout -b add-io.github.manhavn.rust-rdp
+git checkout -b add-io.github.manhavn.rust-rdp-vnc
 ```
 
 3. Copy package files to the **repository root** (not a subfolder):
 
 ```text
 # after: cp -a flathub-out/. .
-io.github.manhavn.rust-rdp.yml          # Flathub manifest (git source!)
-io.github.manhavn.rust-rdp.metainfo.xml
-io.github.manhavn.rust-rdp.desktop
-io.github.manhavn.rust-rdp.png
+io.github.manhavn.rust-rdp-vnc.yml          # Flathub manifest (git source!)
+io.github.manhavn.rust-rdp-vnc.metainfo.xml
+io.github.manhavn.rust-rdp-vnc.desktop
+io.github.manhavn.rust-rdp-vnc.png
 generated-sources.json
 flathub.json
 ```
@@ -216,12 +216,12 @@ flathub.json
 ```bash
 cp -a /path/to/rust-rdp/flathub-out/. .
 rm -f README-SUBMIT.md
-git add io.github.manhavn.rust-rdp.yml \
-        io.github.manhavn.rust-rdp.desktop \
-        io.github.manhavn.rust-rdp.metainfo.xml \
-        io.github.manhavn.rust-rdp.png \
+git add io.github.manhavn.rust-rdp-vnc.yml \
+        io.github.manhavn.rust-rdp-vnc.desktop \
+        io.github.manhavn.rust-rdp-vnc.metainfo.xml \
+        io.github.manhavn.rust-rdp-vnc.png \
         generated-sources.json flathub.json
-git commit -m "Add io.github.manhavn.rust-rdp"
+git commit -m "Add io.github.manhavn.rust-rdp-vnc"
 ```
 
 4. Push to **your fork**, open PR with base **`new-pr`**:
@@ -231,7 +231,7 @@ git commit -m "Add io.github.manhavn.rust-rdp"
 git remote add fork git@github.com:YOU/flathub.git
 # or HTTPS: https://github.com/YOU/flathub.git
 git push -u fork HEAD
-# PR: base flathub/flathub:new-pr  ←  head YOU:add-io.github.manhavn.rust-rdp
+# PR: base flathub/flathub:new-pr  ←  head YOU:add-io.github.manhavn.rust-rdp-vnc
 ```
 
 One-shot (SSH key — skips username/token prompts when key works):
@@ -248,21 +248,21 @@ GitHub CLI (same order — track `new-pr` first):
 gh auth login -h github.com -p ssh   # once
 gh repo fork --clone flathub/flathub && cd flathub
 git fetch origin new-pr && git checkout --track origin/new-pr
-git checkout -b add-io.github.manhavn.rust-rdp
+git checkout -b add-io.github.manhavn.rust-rdp-vnc
 # … copy + commit …
 git push -u origin HEAD
 gh pr create --repo flathub/flathub --base new-pr \
-  --title "Add io.github.manhavn.rust-rdp"
+  --title "Add io.github.manhavn.rust-rdp-vnc"
 ```
 
 ### 5. Flathub manifest: replace `type: dir`
 
-In the Flathub copy of `io.github.manhavn.rust-rdp.yml`, module sources should look like:
+In the Flathub copy of `io.github.manhavn.rust-rdp-vnc.yml`, module sources should look like:
 
 ```yaml
 sources:
   - type: git
-    url: https://github.com/manhavn/rust-rdp.git
+    url: https://github.com/manhavn/rust-rdp-vnc.git
     tag: v0.1.0
     commit: REPLACE_WITH_FULL_SHA
 
@@ -274,18 +274,18 @@ Build commands must use **`cargo --offline`** (the generator sets up the cargo v
 ### 6. After the PR
 
 - Base must be `flathub/flathub` **`new-pr`** (not `master`)  
-- Title example: `Add io.github.manhavn.rust-rdp`  
+- Title example: `Add io.github.manhavn.rust-rdp-vnc`  
 - Bot builds the app; fix CI until green  
 
 ### 7. After merge
 
 - App appears on Flathub (may take a short time to propagate)  
-- Long-term maintenance happens in **`github.com/flathub/io.github.manhavn.rust-rdp`**  
+- Long-term maintenance happens in **`github.com/flathub/io.github.manhavn.rust-rdp-vnc`**  
 - Version updates: new tag upstream → update tag/commit + regenerate sources → PR to the app repo  
 
 ```bash
-flatpak install flathub io.github.manhavn.rust-rdp
-flatpak update io.github.manhavn.rust-rdp
+flatpak install flathub io.github.manhavn.rust-rdp-vnc
+flatpak update io.github.manhavn.rust-rdp-vnc
 ```
 
 ---
@@ -307,7 +307,7 @@ Do **not** use `--filesystem=home` / `host` — Flathub linter rejects them
 
 ## AppStream / metainfo tips
 
-File: `io.github.manhavn.rust-rdp.metainfo.xml`
+File: `io.github.manhavn.rust-rdp-vnc.metainfo.xml`
 
 - `id` must match app id  
 - `launchable` → desktop file id  
@@ -318,7 +318,7 @@ File: `io.github.manhavn.rust-rdp.metainfo.xml`
 Validate locally if you have `appstreamcli`:
 
 ```bash
-appstreamcli validate flatpak/io.github.manhavn.rust-rdp.metainfo.xml
+appstreamcli validate flatpak/io.github.manhavn.rust-rdp-vnc.metainfo.xml
 ```
 
 ---
@@ -327,7 +327,7 @@ appstreamcli validate flatpak/io.github.manhavn.rust-rdp.metainfo.xml
 
 1. Tag new version on GitHub (`v0.1.1`)  
 2. Regenerate `generated-sources.json`  
-3. In `flathub/io.github.manhavn.rust-rdp`: bump tag/commit, sources, metainfo release entry  
+3. In `flathub/io.github.manhavn.rust-rdp-vnc`: bump tag/commit, sources, metainfo release entry  
 4. Open PR or use Flathub’s update workflow  
 5. Wait for build + merge  
 
@@ -361,9 +361,9 @@ appstreamcli validate flatpak/io.github.manhavn.rust-rdp.metainfo.xml
 
 ```
 flatpak/
-  io.github.manhavn.rust-rdp.yml
-  io.github.manhavn.rust-rdp.desktop
-  io.github.manhavn.rust-rdp.metainfo.xml
+  io.github.manhavn.rust-rdp-vnc.yml
+  io.github.manhavn.rust-rdp-vnc.desktop
+  io.github.manhavn.rust-rdp-vnc.metainfo.xml
   README.md                 ← this file
   README.vi.md
 scripts/publish-flatpak.sh

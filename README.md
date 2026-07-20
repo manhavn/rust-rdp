@@ -99,14 +99,14 @@ Adjust `ANDROID_NDK_HOME` / NDK path in `android/app/build.gradle.kts` if your S
 ./build-desktop.sh dev
 
 # Or directly
-cargo build -p rust-rdp-desktop --release
-cargo run -p rust-rdp-desktop
+cargo build -p rust-rdp-vnc-desktop --release
+cargo run -p rust-rdp-vnc-desktop
 ```
 
 Binary:
 
-- Release: `target/release/rust-rdp`
-- Debug: `target/debug/rust-rdp`
+- Release: `target/release/rust-rdp-vnc`
+- Debug: `target/debug/rust-rdp-vnc`
 
 ---
 
@@ -152,18 +152,18 @@ Assets live under `desktop/assets/`.
 
 ```bash
 # Binary on PATH
-cp target/release/rust-rdp ~/.local/bin/
+cp target/release/rust-rdp-vnc ~/.local/bin/
 
 # Icon
 mkdir -p ~/.local/share/icons/hicolor/256x256/apps
 cp desktop/assets/icon.png \
-  ~/.local/share/icons/hicolor/256x256/apps/io.github.manhavn.rust-rdp.png
+  ~/.local/share/icons/hicolor/256x256/apps/io.github.manhavn.rust-rdp-vnc.png
 
 # Desktop entry
 mkdir -p ~/.local/share/applications
-cp desktop/assets/io.github.manhavn.rust-rdp.desktop \
+cp desktop/assets/io.github.manhavn.rust-rdp-vnc.desktop \
   ~/.local/share/applications/
-# Set Exec= to an absolute path if rust-rdp is not on PATH
+# Set Exec= to an absolute path if rust-rdp-vnc is not on PATH
 ```
 
 ---
@@ -197,7 +197,7 @@ cargo check -p rust_rdp
 cargo check -p rust_rdp --features android
 
 # Desktop only
-cargo check -p rust-rdp-desktop
+cargo check -p rust-rdp-vnc-desktop
 ```
 
 Generate Android launcher icons:
@@ -220,7 +220,7 @@ Scaffolding lives under `snap/` and `flatpak/`. Helper scripts:
 
 # Flatpak local install
 ./scripts/publish-flatpak.sh
-flatpak run io.github.manhavn.rust-rdp
+flatpak run io.github.manhavn.rust-rdp-vnc
 
 # Flathub one-shot (Podman): generate sources + package (+ optional GitHub PR)
 ./scripts/publish-flathub-podman.sh

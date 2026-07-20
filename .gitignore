@@ -34,6 +34,7 @@ snap/.snapcraft/
 .flatpak-repo/
 .flatpak-builder/
 .flatpak-cargo-gen/
+.flatpak-preflight/
 *.flatpak
 flatpak/generated-sources.json
 flathub-out/

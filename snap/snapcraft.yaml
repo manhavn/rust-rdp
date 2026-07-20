@@ -1,4 +1,4 @@
-name: rust-rdp
+name: rust-rdp-vnc
 base: core24
 version: '0.1.0'
 summary: RDP and VNC remote desktop client
@@ -11,7 +11,7 @@ description: |
   - Open/save .rdp and .vnc connection files
   - Zoom, fullscreen, keyboard and mouse input
 
-  Source: https://github.com/manhavn/rust-rdp
+  Source: https://github.com/manhavn/rust-rdp-vnc
 
 grade: devel
 confinement: strict
@@ -23,11 +23,11 @@ platforms:
     build-for: [amd64]
 
 apps:
-  rust-rdp:
-    command: bin/rust-rdp
-    desktop: meta/gui/rust-rdp.desktop
+  rust-rdp-vnc:
+    command: bin/rust-rdp-vnc
+    desktop: meta/gui/rust-rdp-vnc.desktop
     extensions: [gnome]
-    common-id: io.github.manhavn.rust-rdp
+    common-id: io.github.manhavn.rust-rdp-vnc
     plugs:
       - network
       - network-bind
@@ -36,7 +36,7 @@ apps:
       - removable-media
 
 parts:
-  rust-rdp:
+  rust-rdp-vnc:
     plugin: rust
     source: .
     source-type: local
@@ -76,6 +76,6 @@ parts:
 
       mkdir -p "${CRAFT_PART_INSTALL}/meta/gui"
       cp desktop/assets/icon.png \
-        "${CRAFT_PART_INSTALL}/meta/gui/rust-rdp.png"
-      cp snap/gui/rust-rdp.desktop \
-        "${CRAFT_PART_INSTALL}/meta/gui/rust-rdp.desktop"
+        "${CRAFT_PART_INSTALL}/meta/gui/rust-rdp-vnc.png"
+      cp snap/gui/rust-rdp-vnc.desktop \
+        "${CRAFT_PART_INSTALL}/meta/gui/rust-rdp-vnc.desktop"

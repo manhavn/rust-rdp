@@ -4253,7 +4253,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-rdp-desktop"
+name = "rust-rdp-vnc-desktop"
 version = "0.1.0"
 dependencies = [
  "directories",

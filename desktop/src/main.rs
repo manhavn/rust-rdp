@@ -202,7 +202,7 @@ impl Default for Prefs {
 
 impl Prefs {
     fn path() -> Option<PathBuf> {
-        directories::ProjectDirs::from("com", "rustai", "rust-rdp")
+        directories::ProjectDirs::from("com", "rustai", "rust-rdp-vnc")
             .map(|d| d.config_dir().join("prefs.txt"))
     }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.manhavn.rust-rdp</id>
+  <id>io.github.manhavn.rust-rdp-vnc</id>
   <name>Rust RDP VNC</name>
   <summary>RDP and VNC remote desktop client</summary>
   <metadata_license>CC0-1.0</metadata_license>
@@ -21,14 +21,14 @@
       <li>Zoom, fullscreen, keyboard and mouse input</li>
     </ul>
   </description>
-  <launchable type="desktop-id">io.github.manhavn.rust-rdp.desktop</launchable>
-  <url type="homepage">https://github.com/manhavn/rust-rdp</url>
-  <url type="bugtracker">https://github.com/manhavn/rust-rdp/issues</url>
-  <url type="vcs-browser">https://github.com/manhavn/rust-rdp</url>
+  <launchable type="desktop-id">io.github.manhavn.rust-rdp-vnc.desktop</launchable>
+  <url type="homepage">https://github.com/manhavn/rust-rdp-vnc</url>
+  <url type="bugtracker">https://github.com/manhavn/rust-rdp-vnc/issues</url>
+  <url type="vcs-browser">https://github.com/manhavn/rust-rdp-vnc</url>
   <screenshots>
     <screenshot type="default">
       <caption>Rust RDP VNC connection panel and remote desktop view</caption>
-      <image type="source" width="1400" height="900">https://raw.githubusercontent.com/manhavn/rust-rdp/main/desktop/assets/screenshots/main.png</image>
+      <image type="source" width="1400" height="900">https://raw.githubusercontent.com/manhavn/rust-rdp-vnc/main/desktop/assets/screenshots/main.png</image>
     </screenshot>
   </screenshots>
   <releases>

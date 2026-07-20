@@ -4,7 +4,7 @@
 #
 # IMPORTANT — Flathub is NOT a username/password binary upload store.
 #   • First publish  = GitHub PR to flathub/flathub (branch new-pr)
-#   • Later updates  = PR to flathub/io.github.manhavn.rust-rdp
+#   • Later updates  = PR to flathub/io.github.manhavn.rust-rdp-vnc
 # This script can: generate cargo sources, build a Flathub package tree,
 # optionally push a branch and open the PR (SSH key or HTTPS token).
 #
@@ -32,7 +32,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-APP_ID="io.github.manhavn.rust-rdp"
+APP_ID="io.github.manhavn.rust-rdp-vnc"
 TEMPLATE="${ROOT}/flatpak/${APP_ID}.flathub.yml.template"
 NON_INTERACTIVE=0
 
@@ -120,7 +120,7 @@ default_git_url() {
   local u
   u="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
   if [[ -z "$u" ]]; then
-    echo "https://github.com/manhavn/rust-rdp.git"
+    echo "https://github.com/manhavn/rust-rdp-vnc.git"
     return
   fi
   # Manifest sources should stay HTTPS (Flathub builders pull over https).
@@ -303,8 +303,8 @@ ok "commit ${GIT_COMMIT}"
 # ubuntu:24.04 container does NOT have python3 until apt-install — so we bake
 # tools into a local image once, then reuse it.
 
-TOOLS_IMAGE="${TOOLS_IMAGE:-localhost/rust-rdp-flathub-tools:latest}"
-CACHE_VOL="rust-rdp-flathub-cache"
+TOOLS_IMAGE="${TOOLS_IMAGE:-localhost/rust-rdp-vnc-flathub-tools:latest}"
+CACHE_VOL="rust-rdp-vnc-flathub-cache"
 
 info "Ensuring Podman tools image (${TOOLS_IMAGE})…"
 if ! podman image exists "${TOOLS_IMAGE}" 2>/dev/null; then
@@ -522,7 +522,7 @@ if [[ "${OPEN_PR}" == "1" ]]; then
     echo "${GH_TOKEN}" | gh auth login --with-token 2>/dev/null || true
   fi
 
-  BRANCH="rust-rdp-${GIT_TAG//\//-}-$(date +%Y%m%d%H%M)"
+  BRANCH="rust-rdp-vnc-${GIT_TAG//\//-}-$(date +%Y%m%d%H%M)"
   TMP_GH="$(mktemp -d)"
   cleanup() { rm -rf "${TMP_GH}"; }
   trap cleanup EXIT
