@@ -28,8 +28,10 @@
 #   SKIP_BUILD=1             Skip podman flatpak-builder smoke test
 #   OPEN_PR=1|0              Open GitHub PR automatically (default: ask)
 #   MODE=first|update        first = flathub/flathub new-pr; update = app repo
-#   FLATHUB_VIDEO_URL        Public demo video URL for the submission PR body
-#                            (GitHub user-attachments or raw .webm URL)
+#   FLATHUB_VIDEO_URL        Required for first-submit PR body. Prefer
+#                            https://github.com/user-attachments/assets/...
+#                            (drag-drop demo.webm into a PR). Fallback:
+#                            raw.githubusercontent.com/.../demo.webm
 #   TOOLS_IMAGE              Podman tools image ref
 #                            (default: build.dev/flathub-rust-rdp-vnc:v1.0.0)
 #   TOOLS_IMAGE_TAR          Optional path to image .tar under scripts/
@@ -347,6 +349,47 @@ if [[ "${OPEN_PR}" == "1" ]]; then
   export GH_USER
 fi
 
+# Flathub bot auto-closes PRs with "Video checklist requirement not met"
+# if the video line is checked without a real video URL (user-attachments or .webm/.mp4).
+DEFAULT_DEMO_VIDEO="https://raw.githubusercontent.com/manhavn/rust-rdp-vnc/main/desktop/assets/screenshots/demo.webm"
+if [[ -z "${FLATHUB_VIDEO_URL:-}" ]]; then
+  # Prefer repo demo.webm if present on disk (already pushed to main).
+  if [[ -f "${ROOT}/desktop/assets/screenshots/demo.webm" ]]; then
+    FLATHUB_VIDEO_URL="${DEFAULT_DEMO_VIDEO}"
+  fi
+fi
+prompt FLATHUB_VIDEO_URL \
+  "Demo video URL for Flathub PR (user-attachments preferred; GitHub raw .webm OK)" \
+  "${FLATHUB_VIDEO_URL:-${DEFAULT_DEMO_VIDEO}}"
+
+is_valid_flathub_video_url() {
+  local u="${1:-}"
+  [[ -n "$u" ]] || return 1
+  # Must be http(s) and look like an attachment or a video file.
+  [[ "$u" =~ ^https?:// ]] || return 1
+  if [[ "$u" == *"/user-attachments/"* || "$u" == *"/assets/"* ]]; then
+    return 0
+  fi
+  if [[ "$u" =~ \.(webm|mp4|mkv|mov)(\?.*)?$ ]]; then
+    return 0
+  fi
+  return 1
+}
+
+if ! is_valid_flathub_video_url "${FLATHUB_VIDEO_URL}"; then
+  die "Invalid or empty FLATHUB_VIDEO_URL (${FLATHUB_VIDEO_URL:-empty}).
+  Flathub auto-closes PRs without a real video link.
+  Options:
+    1) Open a draft PR, drag-drop demo.webm into the description, copy the
+       https://github.com/user-attachments/assets/... URL, re-run with:
+         FLATHUB_VIDEO_URL='https://github.com/user-attachments/assets/…'
+    2) Use the repo demo (default):
+         ${DEFAULT_DEMO_VIDEO}
+  Local file: desktop/assets/screenshots/demo.webm"
+fi
+export FLATHUB_VIDEO_URL
+ok "Flathub PR video URL: ${FLATHUB_VIDEO_URL}"
+
 # ── ensure release tag (create + push if missing) ────────────────────────────
 
 # Create local tag on HEAD if absent, then push to origin when remote lacks it.
@@ -579,23 +622,20 @@ SCREENSHOT_URL_1="${FLATHUB_SCREENSHOT_URL:-https://raw.githubusercontent.com/ma
 SCREENSHOT_URL_2="${FLATHUB_SCREENSHOT_URL_2:-https://raw.githubusercontent.com/manhavn/rust-rdp-vnc/main/desktop/assets/screenshots/session.png}"
 # Back-compat for older docs that expect a single SCREENSHOT_URL
 SCREENSHOT_URL="${SCREENSHOT_URL_1}"
-FLATHUB_VIDEO_URL="${FLATHUB_VIDEO_URL:-}"
+# FLATHUB_VIDEO_URL already validated / prompted above.
 
 write_flathub_pr_body() {
   local out="$1"
-  local video_line
-  if [[ -n "${FLATHUB_VIDEO_URL}" ]]; then
-    video_line="${FLATHUB_VIDEO_URL}"
-  else
-    video_line="**(attach a short demo video of the Flatpak running on Linux — drag-drop into the PR description)**"
-  fi
+  # Flathub bot requires a real video URL on the checked video line.
+  # Prefer: https://github.com/user-attachments/assets/... (drag-drop into PR).
+  # Also accepted: direct .webm/.mp4 links (e.g. raw.githubusercontent.com demo).
   cat > "${out}" <<EOF
 <!-- ⚠️⚠️  Submission pull request MUST be made against the \`new-pr\` **base branch** ⚠️⚠️  -->
 
 ### Please confirm your submission meets all the criteria
 
 - [x] Please describe the application briefly. **Rust RDP VNC is a Linux remote desktop client (RDP via IronRDP + VNC) with a native desktop UI.**
-- [x] Please attach a video showcasing the application on Linux using the Flatpak. ${video_line}
+- [x] Please attach a video showcasing the application on Linux using the Flatpak. ${FLATHUB_VIDEO_URL}
 - [x] The Flatpak ID follows all the rules listed in the Application ID requirements.
 - [x] I have read and followed all the Submission requirements and the Submission guide and I agree to them.
 - [x] I am an author/developer/upstream contributor to the project. **Link:** ${UPSTREAM_WEB}
@@ -605,6 +645,10 @@ Tag: ${GIT_TAG} (${GIT_COMMIT})
 Screenshots:
 - ${SCREENSHOT_URL_1}
 - ${SCREENSHOT_URL_2}
+
+Demo video (Flatpak on Linux):
+${FLATHUB_VIDEO_URL}
+
 App ID: \`${APP_ID}\`
 
 <!-- ⚠️⚠️  Please DO NOT change anything below this line ⚠️⚠️  -->
