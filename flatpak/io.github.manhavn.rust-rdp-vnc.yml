@@ -41,14 +41,21 @@ modules:
     build-options:
       env:
         CARGO_HOME: /run/build/rust-rdp-vnc/cargo
+      # Network only as last-resort fallback if offline vendor is missing.
+      # Prefer: ./scripts/publish-flatpak.sh --generate-sources
+      build-args:
+        - --share=network
     build-commands:
       - install -d /app/bin
-      # Offline when generated-sources.json is present; otherwise allow network (local only).
+      # Offline when flatpak-cargo-generator laid out cargo/; else network (local only).
       - |
-        if [ -f cargo/config.toml ] || [ -d cargo ]; then
+        set -e
+        if [ -f cargo/config ] || [ -f cargo/config.toml ] || [ -d cargo/vendor ]; then
+          echo "Building offline with vendored crates…"
           cargo --offline build --release -p rust-rdp-vnc-desktop --verbose
         else
-          echo "WARNING: building WITH network (not Flathub-safe). Generate sources for Flathub."
+          echo "WARNING: no cargo vendor tree — building WITH network (not Flathub-safe)."
+          echo "Run: ./scripts/publish-flatpak.sh --generate-sources"
           cargo build --release -p rust-rdp-vnc-desktop --verbose
         fi
       - install -Dm755 target/release/rust-rdp-vnc /app/bin/rust-rdp-vnc
@@ -57,14 +64,10 @@ modules:
       - install -Dm644 desktop/assets/icon.png /app/share/icons/hicolor/256x256/apps/io.github.manhavn.rust-rdp-vnc.png
       - install -Dm644 desktop/assets/icon-512.png /app/share/icons/hicolor/512x512/apps/io.github.manhavn.rust-rdp-vnc.png
     sources:
-      # Local development: build from the working tree
+      # Local development: working tree + offline crates (generated-sources.json).
       - type: dir
         path: ..
-      # When publishing to Flathub, replace the dir source with:
-      # - type: git
-      #   url: https://github.com/manhavn/rust-rdp-vnc.git
-      #   tag: v0.1.0
-      #   commit: <full-sha>
-      #
-      # And include offline crate sources:
-      # - generated-sources.json
+      # Vendored crates for sandboxed / offline cargo (required for reliable builds).
+      # Generate with: ./scripts/publish-flatpak.sh --generate-sources
+      - generated-sources.json
+      # Flathub submission uses the .flathub.yml.template instead (git tag + same json).

@@ -198,6 +198,15 @@ build_flatpak() {
     exit 1
   fi
 
+  # Local manifest includes generated-sources.json — create it if missing so
+  # cargo can build offline inside the flatpak-builder sandbox.
+  if [[ ! -f "${ROOT}/flatpak/generated-sources.json" ]]; then
+    echo "==> flatpak/generated-sources.json missing — generating (needs host network)…"
+    generate_cargo_sources
+  else
+    echo "==> Using existing flatpak/generated-sources.json"
+  fi
+
   echo "==> flatpak-builder (user install=${1})…"
   # shellcheck disable=SC2086
   flatpak-builder \
