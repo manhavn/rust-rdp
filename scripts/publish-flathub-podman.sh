@@ -6,18 +6,22 @@
 #   • First publish  = GitHub PR to flathub/flathub (branch new-pr)
 #   • Later updates  = PR to flathub/io.github.manhavn.rust-rdp
 # This script can: generate cargo sources, build a Flathub package tree,
-# optionally push a branch and open the PR if you provide a GitHub token.
+# optionally push a branch and open the PR (SSH key or HTTPS token).
 #
 # Usage:
 #   ./scripts/publish-flathub-podman.sh
 #   ./scripts/publish-flathub-podman.sh --non-interactive   # use env vars only
-#   GH_TOKEN=... ./scripts/publish-flathub-podman.sh
+#   GIT_AUTH=ssh OPEN_PR=1 ./scripts/publish-flathub-podman.sh   # SSH key, no token
+#   GIT_AUTH=https GH_TOKEN=... GH_USER=you OPEN_PR=1 ./scripts/publish-flathub-podman.sh
 #
 # Env (optional, skips prompts when set):
-#   GH_TOKEN / GITHUB_TOKEN   GitHub PAT (repo + workflow recommended)
-#   GH_USER                   GitHub username
-#   GIT_URL                   Upstream git URL (default: origin https)
-#   GIT_TAG                   Release tag (e.g. v0.1.0)
+#   GIT_AUTH=ssh|https       GitHub transport for clone/push/PR (default: ssh)
+#                            ssh → git@github.com:…  (no username/token if key works)
+#                            https → needs GH_USER + GH_TOKEN for push/PR
+#   GH_TOKEN / GITHUB_TOKEN  GitHub PAT (HTTPS only; repo + workflow recommended)
+#   GH_USER                  GitHub username (auto-detected via gh / origin when possible)
+#   GIT_URL                  Upstream project URL for the Flatpak manifest (HTTPS preferred)
+#   GIT_TAG                  Release tag (e.g. v0.1.0)
 #   WORK_DIR                 Where to write the flathub package (default: ./flathub-out)
 #   SKIP_BUILD=1             Skip podman flatpak-builder smoke test
 #   OPEN_PR=1|0              Open GitHub PR automatically (default: ask)
@@ -119,13 +123,77 @@ default_git_url() {
     echo "https://github.com/manhavn/rust-rdp.git"
     return
   fi
-  # normalize git@github.com:user/repo.git → https
+  # Manifest sources should stay HTTPS (Flathub builders pull over https).
   if [[ "$u" =~ ^git@github.com:(.+)$ ]]; then
     echo "https://github.com/${BASH_REMATCH[1]}"
   elif [[ "$u" =~ ^ssh://git@github.com/(.+)$ ]]; then
     echo "https://github.com/${BASH_REMATCH[1]}"
   else
     echo "$u"
+  fi
+}
+
+# owner/repo (no .git) → git@github.com:owner/repo.git
+github_ssh_url() {
+  local path="${1%.git}"
+  path="${path#/}"
+  echo "git@github.com:${path}.git"
+}
+
+# owner/repo (no .git) → https://github.com/owner/repo.git
+github_https_url() {
+  local path="${1%.git}"
+  path="${path#/}"
+  echo "https://github.com/${path}.git"
+}
+
+# Batch-mode probe: key works without interactive password.
+ssh_github_ok() {
+  local out
+  out="$(ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new \
+    -T git@github.com 2>&1 || true)"
+  [[ "$out" == *"successfully authenticated"* || "$out" == *"Hi "* ]]
+}
+
+# Fill GH_USER from gh CLI or origin remote when possible.
+detect_gh_user() {
+  if [[ -n "${GH_USER:-}" ]]; then
+    return 0
+  fi
+  if command -v gh >/dev/null 2>&1; then
+    GH_USER="$(gh api user -q .login 2>/dev/null || true)"
+  fi
+  if [[ -z "${GH_USER:-}" ]]; then
+    local u
+    u="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
+    if [[ "$u" =~ git@github\.com:([^/]+)/ ]]; then
+      GH_USER="${BASH_REMATCH[1]}"
+    elif [[ "$u" =~ github\.com[/:]([^/]+)/ ]]; then
+      GH_USER="${BASH_REMATCH[1]}"
+    fi
+  fi
+  export GH_USER
+}
+
+# URL used for clone/push of a GitHub repo path (owner/name).
+github_repo_url() {
+  local path="$1"
+  if [[ "${GIT_AUTH}" == "ssh" ]]; then
+    github_ssh_url "$path"
+  else
+    github_https_url "$path"
+  fi
+}
+
+# Push URL for the user's fork (token embedded only for HTTPS + token).
+github_fork_push_url() {
+  local path="$1" # e.g. user/flathub
+  if [[ "${GIT_AUTH}" == "ssh" ]]; then
+    github_ssh_url "$path"
+  elif [[ -n "${GH_TOKEN:-}" ]]; then
+    echo "https://x-access-token:${GH_TOKEN}@github.com/${path%.git}.git"
+  else
+    github_https_url "$path"
   fi
 }
 
@@ -137,7 +205,8 @@ cat <<'EOF'
 ╠══════════════════════════════════════════════════════════════╣
 ║  Flathub does NOT accept store login + binary upload.        ║
 ║  This wizard prepares sources + package and can open a       ║
-║  GitHub PR with your token. Reviewers still must approve.    ║
+║  GitHub PR via SSH key (git@github.com) or HTTPS + token.    ║
+║  Reviewers still must approve.                               ║
 ╚══════════════════════════════════════════════════════════════╝
 EOF
 
@@ -154,8 +223,9 @@ WORK_DIR="${WORK_DIR:-}"
 SKIP_BUILD="${SKIP_BUILD:-}"
 OPEN_PR="${OPEN_PR:-}"
 MODE="${MODE:-}"
+GIT_AUTH="${GIT_AUTH:-}"
 
-prompt GIT_URL "Git HTTPS URL of this project" "$(default_git_url)"
+prompt GIT_URL "Git HTTPS URL of this project (manifest source)" "$(default_git_url)"
 prompt GIT_TAG "Release git tag to publish (must exist on GitHub)" "v0.1.0"
 prompt WORK_DIR "Output directory for Flathub package tree" "${ROOT}/flathub-out"
 prompt MODE "Submit mode: first (new app PR) or update (app repo PR)" "first"
@@ -168,12 +238,47 @@ prompt_yesno DO_GEN "Generate flatpak/generated-sources.json now?" "y"
 if [[ -z "${SKIP_BUILD}" ]]; then
   prompt_yesno SKIP_BUILD "Skip Podman flatpak-builder smoke test? (faster)" "y"
 fi
-prompt_yesno OPEN_PR "Open GitHub PR automatically with gh + token?" "n"
+prompt_yesno OPEN_PR "Open GitHub PR automatically (SSH key or HTTPS token)?" "n"
 
 if [[ "${OPEN_PR}" == "1" ]]; then
-  prompt GH_USER "GitHub username"
-  prompt_secret GH_TOKEN "GitHub Personal Access Token (repo scope)"
-  export GH_TOKEN GITHUB_TOKEN="$GH_TOKEN"
+  prompt GIT_AUTH "GitHub transport: ssh (git@github.com) or https" "ssh"
+  case "${GIT_AUTH}" in
+    ssh|https) ;;
+    *) die "GIT_AUTH must be 'ssh' or 'https' (got: ${GIT_AUTH})" ;;
+  esac
+
+  if [[ "${GIT_AUTH}" == "ssh" ]]; then
+    info "Using SSH (git@github.com:) — no Personal Access Token required"
+    need_cmd ssh
+    if ! ssh_github_ok; then
+      die "SSH auth to git@github.com failed (BatchMode).
+  Fix: ssh-add your key, or test:  ssh -T git@github.com
+  Or re-run with GIT_AUTH=https and a token."
+    fi
+    ok "SSH to GitHub works"
+    detect_gh_user
+    if [[ -z "${GH_USER:-}" ]]; then
+      # Only ask if we truly cannot detect — rare with a working SSH/gh setup.
+      prompt GH_USER "GitHub username (fork owner / PR head)"
+    else
+      ok "GitHub user: ${GH_USER}"
+    fi
+    # Prefer existing gh session; do not force token login.
+    if command -v gh >/dev/null 2>&1; then
+      if ! gh auth status >/dev/null 2>&1; then
+        info "gh is not logged in. For PR create without token, run once:"
+        info "  gh auth login -h github.com -p ssh"
+        info "Or set GH_TOKEN for HTTPS API only (git push still uses SSH)."
+      fi
+    fi
+  else
+    info "Using HTTPS — GitHub username + token required for push/PR"
+    detect_gh_user
+    prompt GH_USER "GitHub username"
+    prompt_secret GH_TOKEN "GitHub Personal Access Token (repo scope)"
+    export GH_TOKEN GITHUB_TOKEN="$GH_TOKEN"
+  fi
+  export GH_USER
 fi
 
 # ── resolve tag commit ───────────────────────────────────────────────────────
@@ -318,15 +423,68 @@ cat > "${PKG_DIR}/README-SUBMIT.md" <<EOF
 - Commit: ${GIT_COMMIT}
 - Upstream: ${GIT_URL}
 
-## First submission
-1. Fork flathub/flathub (uncheck "master only")
-2. git clone --branch=new-pr https://github.com/YOU/flathub.git && cd flathub
-3. git checkout -b add-app
-4. Copy *files* to repo ROOT (not a subfolder):  cp -a ${PKG_DIR}/* .
-5. PR against base **new-pr** with filled checklist + video
+## First submission (required order)
 
-## Update
-Clone flathub/${APP_ID} and replace files.
+Start from **upstream** \`new-pr\`, then copy files and commit. Do **not**
+base the PR on \`master\`.
+
+### SSH (recommended if you use an SSH key — no token)
+
+\`\`\`bash
+# 1) Clone flathub/flathub @ new-pr via SSH
+git clone --branch=new-pr --single-branch \\
+  git@github.com:flathub/flathub.git
+cd flathub
+
+# 2) Submission branch from new-pr
+git checkout -b add-${APP_ID}
+
+# 3) Copy packaging files to repo ROOT (not a subfolder)
+cp -a ${PKG_DIR}/. .
+rm -f README-SUBMIT.md
+
+# 4) Commit
+git add ${APP_ID}.yml ${APP_ID}.desktop ${APP_ID}.metainfo.xml \\
+  ${APP_ID}.png generated-sources.json flathub.json
+git commit -m "Add ${APP_ID} (${GIT_TAG})"
+
+# 5) Push to YOUR fork (SSH) and open PR (base = new-pr)
+#    Fork first: https://github.com/flathub/flathub/fork
+#    (uncheck "Copy the master branch only")
+git remote add fork git@github.com:YOU/flathub.git
+git push -u fork HEAD
+gh pr create --repo flathub/flathub --base new-pr --title "Add ${APP_ID}"
+# (gh: once  →  gh auth login -h github.com -p ssh)
+\`\`\`
+
+### HTTPS + token
+
+\`\`\`bash
+git clone --branch=new-pr --single-branch \\
+  https://github.com/flathub/flathub.git
+cd flathub
+git checkout -b add-${APP_ID}
+cp -a ${PKG_DIR}/. . && rm -f README-SUBMIT.md
+git add ${APP_ID}.yml ${APP_ID}.desktop ${APP_ID}.metainfo.xml \\
+  ${APP_ID}.png generated-sources.json flathub.json
+git commit -m "Add ${APP_ID} (${GIT_TAG})"
+git remote add fork https://github.com/YOU/flathub.git
+git push -u fork HEAD   # uses credential helper / PAT
+gh pr create --repo flathub/flathub --base new-pr --title "Add ${APP_ID}"
+\`\`\`
+
+Or one-shot with this repo's script:
+
+\`\`\`bash
+# SSH key only (no username/token prompts when key + gh work):
+GIT_AUTH=ssh OPEN_PR=1 ./scripts/publish-flathub-podman.sh
+
+# HTTPS:
+GIT_AUTH=https GH_USER=you GH_TOKEN=ghp_… OPEN_PR=1 ./scripts/publish-flathub-podman.sh
+\`\`\`
+
+## Update (after the app is on Flathub)
+Clone flathub/${APP_ID} and replace packaging files; open a PR there.
 EOF
 
 ok "package tree ready (toplevel)"
@@ -351,13 +509,18 @@ fi
 # ── optional GitHub PR ───────────────────────────────────────────────────────
 
 if [[ "${OPEN_PR}" == "1" ]]; then
-  need_cmd curl
   if ! command -v gh >/dev/null 2>&1; then
-    info "Installing gh CLI via Podman is awkward; checking host gh…"
     die "Install GitHub CLI: https://cli.github.com/  (sudo apt install gh) then re-run with OPEN_PR=1"
   fi
 
-  echo "${GH_TOKEN}" | gh auth login --with-token 2>/dev/null || true
+  # HTTPS+token: feed gh. SSH: use existing gh session (or keyring), never invent a token.
+  if [[ "${GIT_AUTH}" == "https" ]]; then
+    [[ -n "${GH_TOKEN:-}" ]] || die "GH_TOKEN required for GIT_AUTH=https"
+    echo "${GH_TOKEN}" | gh auth login --with-token 2>/dev/null || true
+  elif [[ -n "${GH_TOKEN:-}" ]]; then
+    # Optional: token only for gh API while git stays on SSH
+    echo "${GH_TOKEN}" | gh auth login --with-token 2>/dev/null || true
+  fi
 
   BRANCH="rust-rdp-${GIT_TAG//\//-}-$(date +%Y%m%d%H%M)"
   TMP_GH="$(mktemp -d)"
@@ -365,23 +528,29 @@ if [[ "${OPEN_PR}" == "1" ]]; then
   trap cleanup EXIT
 
   if [[ "$MODE" == "first" ]]; then
-    info "Preparing first-app PR against flathub/flathub (new-pr)…"
-    # User must already have a fork of flathub/flathub
-    FORK_URL="https://github.com/${GH_USER}/flathub.git"
-    info "Cloning your flathub fork: ${FORK_URL}"
-    if ! git clone --depth 1 -b new-pr "${FORK_URL}" "${TMP_GH}/flathub" 2>/dev/null; then
-      info "Branch new-pr missing — cloning default and creating new-pr…"
-      git clone --depth 1 "${FORK_URL}" "${TMP_GH}/flathub" \
-        || die "Cannot clone ${FORK_URL}. Fork https://github.com/flathub/flathub first."
-      (
-        cd "${TMP_GH}/flathub"
-        git checkout -b new-pr
-      )
-    fi
-    # Files must be at repository ROOT (not APP_ID/ subfolder)
+    # Official flow (https://docs.flathub.org/docs/for-app-authors/submission):
+    #   1) Start from flathub/flathub @ branch new-pr (upstream, not master)
+    #   2) Create a submission branch, copy packaging files to repo ROOT
+    #   3) Commit, push to YOUR fork, open PR with base = new-pr
+    info "Preparing first-app PR against flathub/flathub (base: new-pr)…"
+    UPSTREAM_URL="$(github_repo_url flathub/flathub)"
+    info "Cloning upstream ${UPSTREAM_URL} branch new-pr (required source of truth)…"
+    git clone --depth 1 -b new-pr "${UPSTREAM_URL}" "${TMP_GH}/flathub" \
+      || die "Cannot clone ${UPSTREAM_URL} @ new-pr. Check network / SSH / GitHub access."
+
+    # Ensure a personal fork exists for the push/PR head
+    info "Ensuring fork ${GH_USER}/flathub exists…"
+    gh repo fork flathub/flathub --clone=false 2>/dev/null \
+      || info "Fork may already exist (continuing)…"
+
+    FORK_PUSH="$(github_fork_push_url "${GH_USER}/flathub")"
+    info "Will push fork ${GH_USER}/flathub via ${GIT_AUTH}"
+
+    # Files must be at repository ROOT (not APP_ID/ subfolder) for flathub/flathub
     (
       cd "${TMP_GH}/flathub"
-      # drop any previous nested layout
+      git checkout -b "${BRANCH}"
+      # Drop any nested layout leftovers if re-running on a dirty tree
       rm -rf "${APP_ID}"
       cp -a "${PKG_DIR}/." .
       rm -f README-SUBMIT.md
@@ -389,8 +558,11 @@ if [[ "${OPEN_PR}" == "1" ]]; then
       git config user.name "${GH_USER}"
       git add "${APP_ID}.yml" "${APP_ID}.desktop" "${APP_ID}.metainfo.xml" \
         "${APP_ID}.png" generated-sources.json flathub.json 2>/dev/null || git add -A
+      git status
       git commit -m "Add ${APP_ID} (${GIT_TAG})"
-      git push -u origin "HEAD:refs/heads/${BRANCH}"
+      git remote remove fork 2>/dev/null || true
+      git remote add fork "${FORK_PUSH}"
+      git push -u fork "HEAD:refs/heads/${BRANCH}"
       gh pr create \
         --repo flathub/flathub \
         --base new-pr \
@@ -400,46 +572,39 @@ if [[ "${OPEN_PR}" == "1" ]]; then
 
 Please review metainfo, permissions, and build."
     )
-    ok "PR opened (check GitHub)"
+    ok "PR opened (check GitHub) — base branch must be new-pr"
   else
     info "Preparing update PR against flathub/${APP_ID}…"
-    APP_FORK="https://github.com/${GH_USER}/${APP_ID}.git"
-    # Prefer official repo if user has write access
-    if gh repo view "flathub/${APP_ID}" >/dev/null 2>&1; then
-      git clone --depth 1 "https://github.com/flathub/${APP_ID}.git" "${TMP_GH}/app" \
-        || die "Cannot clone flathub/${APP_ID}"
-      (
-        cd "${TMP_GH}/app"
-        git checkout -b "${BRANCH}"
-      )
-      # Push may need fork if no write access
-      PUSH_REMOTE="https://x-access-token:${GH_TOKEN}@github.com/flathub/${APP_ID}.git"
-      USE_FORK=0
-    else
+    if ! gh repo view "flathub/${APP_ID}" >/dev/null 2>&1; then
       die "Repo flathub/${APP_ID} not found — app not on Flathub yet; use MODE=first"
     fi
+    APP_UPSTREAM="$(github_repo_url "flathub/${APP_ID}")"
+    git clone --depth 1 "${APP_UPSTREAM}" "${TMP_GH}/app" \
+      || die "Cannot clone flathub/${APP_ID} via ${GIT_AUTH}"
+    (
+      cd "${TMP_GH}/app"
+      git checkout -b "${BRANCH}"
+    )
     rsync -a --delete \
       --exclude .git \
       "${PKG_DIR}/" "${TMP_GH}/app/"
+    FORK_PUSH="$(github_fork_push_url "${GH_USER}/${APP_ID}")"
     (
       cd "${TMP_GH}/app"
       git config user.email "${GH_USER}@users.noreply.github.com"
       git config user.name "${GH_USER}"
       git add -A
       git commit -m "Update ${APP_ID} to ${GIT_TAG}" || die "Nothing to commit?"
-      # Try push to fork first (safer)
-      if git remote get-url origin | grep -q "flathub/${APP_ID}"; then
-        # Create fork if needed and push
-        gh repo fork "flathub/${APP_ID}" --clone=false 2>/dev/null || true
-        git remote remove fork 2>/dev/null || true
-        git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${GH_USER}/${APP_ID}.git"
-        git push -u fork "HEAD:${BRANCH}"
-        gh pr create \
-          --repo "flathub/${APP_ID}" \
-          --head "${GH_USER}:${BRANCH}" \
-          --title "Update to ${GIT_TAG}" \
-          --body "Update to upstream \`${GIT_TAG}\` (\`${GIT_COMMIT}\`)."
-      fi
+      # Push to personal fork, open PR into flathub app repo
+      gh repo fork "flathub/${APP_ID}" --clone=false 2>/dev/null || true
+      git remote remove fork 2>/dev/null || true
+      git remote add fork "${FORK_PUSH}"
+      git push -u fork "HEAD:${BRANCH}"
+      gh pr create \
+        --repo "flathub/${APP_ID}" \
+        --head "${GH_USER}:${BRANCH}" \
+        --title "Update to ${GIT_TAG}" \
+        --body "Update to upstream \`${GIT_TAG}\` (\`${GIT_COMMIT}\`)."
     )
     ok "Update PR flow finished"
   fi
@@ -463,11 +628,16 @@ Contents:
 
 Next steps if you did NOT open a PR:
   1) Ensure tag ${GIT_TAG} is on GitHub:  git push origin ${GIT_TAG}
-  2) First app:
-       - Fork https://github.com/flathub/flathub
-       - Branch new-pr, copy ${PKG_DIR} → io.github.manhavn.rust-rdp/
-       - Open PR to flathub/flathub
-  3) Or re-run with OPEN_PR=1 and GH_TOKEN after forking flathub.
+  2) First app (order matters):
+       a. Clone upstream new-pr:
+            git clone -b new-pr git@github.com:flathub/flathub.git
+            # or HTTPS: https://github.com/flathub/flathub.git
+       b. Branch from new-pr, copy ${PKG_DIR}/* to repo ROOT (not a subfolder)
+       c. Commit, push to YOUR fork, PR base = new-pr
+       See ${PKG_DIR}/README-SUBMIT.md
+  3) Or re-run with OPEN_PR=1:
+       GIT_AUTH=ssh OPEN_PR=1 ./scripts/publish-flathub-podman.sh   # SSH key, no token
+       GIT_AUTH=https GH_USER=… GH_TOKEN=… OPEN_PR=1 ./scripts/…
 
 Docs: flatpak/README.vi.md
 Local test (host): ./scripts/publish-flatpak.sh

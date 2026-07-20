@@ -183,17 +183,76 @@ Checklist before PR:
 
 ### 4. Fork Flathub and open a “new app” PR
 
+**Order matters.** Always take the tree from upstream **`new-pr`**, then copy packaging files and commit. Do **not** base a new-app PR on `master`.
+
 1. Fork [github.com/flathub/flathub](https://github.com/flathub/flathub)  
-2. Create branch **`new-pr`** (required for new apps)  
-3. Add directory **`io.github.manhavn.rust-rdp/`** with approximately:
+   (uncheck **“Copy the master branch only”** so `new-pr` is available on the fork)  
+2. Clone **upstream** branch `new-pr` (source of truth). Prefer **SSH**
+   if you use an SSH key (no username/token for git):
+
+```bash
+# SSH (recommended when you already have a key)
+git clone --branch=new-pr --single-branch \
+  git@github.com:flathub/flathub.git
+# or HTTPS:
+# git clone --branch=new-pr --single-branch \
+#   https://github.com/flathub/flathub.git
+cd flathub
+git checkout -b add-io.github.manhavn.rust-rdp
+```
+
+3. Copy package files to the **repository root** (not a subfolder):
 
 ```text
-io.github.manhavn.rust-rdp/
-  io.github.manhavn.rust-rdp.yml          # Flathub manifest (git source!)
-  io.github.manhavn.rust-rdp.metainfo.xml
-  io.github.manhavn.rust-rdp.desktop
-  generated-sources.json
-  icons/                      # optional hicolor layout
+# after: cp -a flathub-out/. .
+io.github.manhavn.rust-rdp.yml          # Flathub manifest (git source!)
+io.github.manhavn.rust-rdp.metainfo.xml
+io.github.manhavn.rust-rdp.desktop
+io.github.manhavn.rust-rdp.png
+generated-sources.json
+flathub.json
+```
+
+```bash
+cp -a /path/to/rust-rdp/flathub-out/. .
+rm -f README-SUBMIT.md
+git add io.github.manhavn.rust-rdp.yml \
+        io.github.manhavn.rust-rdp.desktop \
+        io.github.manhavn.rust-rdp.metainfo.xml \
+        io.github.manhavn.rust-rdp.png \
+        generated-sources.json flathub.json
+git commit -m "Add io.github.manhavn.rust-rdp"
+```
+
+4. Push to **your fork**, open PR with base **`new-pr`**:
+
+```bash
+# SSH
+git remote add fork git@github.com:YOU/flathub.git
+# or HTTPS: https://github.com/YOU/flathub.git
+git push -u fork HEAD
+# PR: base flathub/flathub:new-pr  ←  head YOU:add-io.github.manhavn.rust-rdp
+```
+
+One-shot (SSH key — skips username/token prompts when key works):
+
+```bash
+GIT_AUTH=ssh OPEN_PR=1 ./scripts/publish-flathub-podman.sh
+# HTTPS:
+# GIT_AUTH=https GH_USER=you GH_TOKEN=ghp_… OPEN_PR=1 ./scripts/publish-flathub-podman.sh
+```
+
+GitHub CLI (same order — track `new-pr` first):
+
+```bash
+gh auth login -h github.com -p ssh   # once
+gh repo fork --clone flathub/flathub && cd flathub
+git fetch origin new-pr && git checkout --track origin/new-pr
+git checkout -b add-io.github.manhavn.rust-rdp
+# … copy + commit …
+git push -u origin HEAD
+gh pr create --repo flathub/flathub --base new-pr \
+  --title "Add io.github.manhavn.rust-rdp"
 ```
 
 ### 5. Flathub manifest: replace `type: dir`
@@ -212,15 +271,11 @@ sources:
 
 Build commands must use **`cargo --offline`** (the generator sets up the cargo vendor/config layout).
 
-Adjust paths if the Flathub repo only contains packaging files (common pattern: git source of upstream + local metainfo/desktop).
+### 6. After the PR
 
-### 6. Open the PR
-
-- Base: `flathub/flathub`  
-- Head: your fork’s `new-pr`  
+- Base must be `flathub/flathub` **`new-pr`** (not `master`)  
 - Title example: `Add io.github.manhavn.rust-rdp`  
-
-The Flathub bot builds the app. Fix CI failures until green.
+- Bot builds the app; fix CI until green  
 
 ### 7. After merge
 

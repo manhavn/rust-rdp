@@ -172,19 +172,80 @@ Checklist trước PR:
 - [ ] Build offline được  
 - [ ] Desktop + icon  
 
-### 4. Fork Flathub, nhánh app mới
+### 4. Fork Flathub, mở PR app mới
+
+**Thứ tự bắt buộc:** lấy code từ nhánh **`new-pr`** của upstream
+`https://github.com/flathub/flathub` **trước**, rồi mới copy file packaging
+và commit. **Không** base PR app mới trên `master`.
 
 1. Fork [github.com/flathub/flathub](https://github.com/flathub/flathub)  
-2. Tạo nhánh **`new-pr`** (bắt buộc cho app mới)  
-3. Thêm thư mục **`io.github.manhavn.rust-rdp/`**:
+   (bỏ chọn **“Copy the master branch only”** để fork có nhánh `new-pr`)  
+2. Clone **upstream** nhánh `new-pr` (nguồn chuẩn). Ưu tiên **SSH** nếu
+   bạn dùng SSH key (không cần nhập username/token cho git):
+
+```bash
+# SSH (khuyến nghị khi đã có key)
+git clone --branch=new-pr --single-branch \
+  git@github.com:flathub/flathub.git
+# hoặc HTTPS:
+# git clone --branch=new-pr --single-branch \
+#   https://github.com/flathub/flathub.git
+cd flathub
+git checkout -b add-io.github.manhavn.rust-rdp
+```
+
+3. Copy file gói vào **ROOT repo** (không tạo thư mục con app):
 
 ```text
-io.github.manhavn.rust-rdp/
-  io.github.manhavn.rust-rdp.yml
-  io.github.manhavn.rust-rdp.metainfo.xml
-  io.github.manhavn.rust-rdp.desktop
-  generated-sources.json
-  icons/   # tuỳ chọn
+# sau: cp -a flathub-out/. .
+io.github.manhavn.rust-rdp.yml
+io.github.manhavn.rust-rdp.metainfo.xml
+io.github.manhavn.rust-rdp.desktop
+io.github.manhavn.rust-rdp.png
+generated-sources.json
+flathub.json
+```
+
+```bash
+cp -a /path/to/rust-rdp/flathub-out/. .
+rm -f README-SUBMIT.md
+git add io.github.manhavn.rust-rdp.yml \
+        io.github.manhavn.rust-rdp.desktop \
+        io.github.manhavn.rust-rdp.metainfo.xml \
+        io.github.manhavn.rust-rdp.png \
+        generated-sources.json flathub.json
+git commit -m "Add io.github.manhavn.rust-rdp"
+```
+
+4. Push lên **fork của bạn**, mở PR với base **`new-pr`**:
+
+```bash
+# SSH
+git remote add fork git@github.com:YOU/flathub.git
+# hoặc HTTPS: https://github.com/YOU/flathub.git
+git push -u fork HEAD
+# PR: base flathub/flathub:new-pr  ←  head YOU:add-io.github.manhavn.rust-rdp
+```
+
+Hoặc one-shot (SSH key — không hỏi username/token nếu key + `gh` ổn):
+
+```bash
+GIT_AUTH=ssh OPEN_PR=1 ./scripts/publish-flathub-podman.sh
+# HTTPS:
+# GIT_AUTH=https GH_USER=you GH_TOKEN=ghp_… OPEN_PR=1 ./scripts/publish-flathub-podman.sh
+```
+
+GitHub CLI (cùng thứ tự — checkout `new-pr` trước):
+
+```bash
+gh auth login -h github.com -p ssh   # một lần
+gh repo fork --clone flathub/flathub && cd flathub
+git fetch origin new-pr && git checkout --track origin/new-pr
+git checkout -b add-io.github.manhavn.rust-rdp
+# … copy + commit …
+git push -u origin HEAD
+gh pr create --repo flathub/flathub --base new-pr \
+  --title "Add io.github.manhavn.rust-rdp"
 ```
 
 ### 5. Manifest Flathub: bỏ `type: dir`
@@ -203,13 +264,11 @@ sources:
 
 Build phải **`cargo --offline`**.
 
-### 6. Mở PR
+### 6. Sau khi mở PR
 
-- Base: `flathub/flathub`  
-- Head: fork của bạn, nhánh `new-pr`  
+- Base: `flathub/flathub` **`new-pr`** (không phải `master`)  
 - Title ví dụ: `Add io.github.manhavn.rust-rdp`  
-
-Bot build app; sửa đến khi CI xanh và review pass.
+- Bot build app; sửa đến khi CI xanh và review pass.
 
 ### 7. Sau khi merge
 

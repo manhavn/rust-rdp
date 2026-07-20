@@ -64,37 +64,63 @@ Flathub does not accept a raw binary upload. Flow:
 
 2) Generate offline Cargo sources (required by Flathub)
    ./scripts/publish-flatpak.sh --generate-sources
-   Commit flatpak/generated-sources.json if you host it in-tree,
-   or keep it only in the Flathub app repository.
+   Or: ./scripts/publish-flathub-podman.sh  (writes flathub-out/)
 
-3) Create a Flathub account / join
+3) Read submission requirements
    https://docs.flathub.org/docs/for-app-authors/submission
 
-4) Fork https://github.com/flathub/flathub
-   Create a branch: new-pr
+4) Open the submission PR — ORDER MATTERS
+   Always start from upstream branch **new-pr**, then copy packaging
+   files and commit. Never base a new-app PR on **master**.
 
-5) Add your app (example layout under the flathub fork):
-   io.github.manhavn.rust-rdp/
-     io.github.manhavn.rust-rdp.yml      # git source + generated-sources.json
-     io.github.manhavn.rust-rdp.metainfo.xml
-     io.github.manhavn.rust-rdp.desktop
-     generated-sources.json
-     icons/...
+   # Prefer SSH if you use an SSH key (no username/token for git):
+   git clone --branch=new-pr --single-branch \
+     git@github.com:flathub/flathub.git
+   # or HTTPS: https://github.com/flathub/flathub.git
+   cd flathub
+   git checkout -b add-io.github.manhavn.rust-rdp
 
-   In the Flathub manifest, replace the local "type: dir" source with:
+   # Copy package files to repo ROOT (not a subfolder)
+   cp -a /path/to/flathub-out/. .
+   # expect: io.github.manhavn.rust-rdp.yml, .desktop, .metainfo.xml,
+   #         generated-sources.json, icon, flathub.json
+
+   git add io.github.manhavn.rust-rdp.yml \
+           io.github.manhavn.rust-rdp.desktop \
+           io.github.manhavn.rust-rdp.metainfo.xml \
+           io.github.manhavn.rust-rdp.png \
+           generated-sources.json flathub.json
+   git commit -m "Add io.github.manhavn.rust-rdp"
+
+   # Push to YOUR fork, PR base = new-pr
+   # Fork first: https://github.com/flathub/flathub/fork
+   # (uncheck "Copy the master branch only")
+   git remote add fork git@github.com:YOU/flathub.git   # or HTTPS
+   git push -u fork HEAD
+   # PR: base flathub/flathub:new-pr  ←  head YOU:add-io.github.manhavn.rust-rdp
+
+   One-shot (SSH key — skips username/token when key works):
+     GIT_AUTH=ssh OPEN_PR=1 ./scripts/publish-flathub-podman.sh
+
+   GitHub CLI (same order — track new-pr first):
+     gh auth login -h github.com -p ssh    # once
+     gh repo fork --clone flathub/flathub && cd flathub
+     git fetch origin new-pr && git checkout --track origin/new-pr
+     git checkout -b add-io.github.manhavn.rust-rdp
+     # … copy, commit, push, then:
+     gh pr create --repo flathub/flathub --base new-pr \
+       --title "Add io.github.manhavn.rust-rdp"
+
+5) Manifest uses git source + offline crates (see flathub yml template):
 
      - type: git
        url: https://github.com/manhavn/rust-rdp.git
        tag: v0.1.0
        commit: <full commit sha of the tag>
-
      - generated-sources.json
 
-6) Open a PR against flathub/flathub (base branch: new-pr)
-   Bot builds your app; maintainers review metainfo, permissions, etc.
-
-7) After merge, updates are new PRs / tags on your Flathub app repo
-   (flathub/io.github.manhavn.rust-rdp) following Flathub’s update process.
+6) After merge, updates go to flathub/io.github.manhavn.rust-rdp
+   (not through flathub/flathub again).
 
 Useful links:
   https://docs.flathub.org/docs/for-app-authors/submission
